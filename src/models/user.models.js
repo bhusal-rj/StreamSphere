@@ -1,108 +1,93 @@
-import mongoose from "mongoose";
-import jwt from "jwt";
-import bcrypt from "bcrypt";
-const userSchema=new Schema({
-    username:{
-        type: 'string',
-        required: true,
-        unique: true,
-        lowercase: true,
-        trim:true,
-        index:true
-    },
-    email:
+import mongoose, {Schema} from "mongoose";
+import jwt from "jsonwebtoken"
+import bcrypt from "bcrypt"
+
+const userSchema = new Schema(
     {
-        type: String,
-        required: true,
-        unique: true,
-        lowercase: true,
-        trim:true,
+        username: {
+            type: String,
+            required: true,
+            unique: true,
+            lowercase: true,
+            trim: true, 
+            index: true
+        },
+        email: {
+            type: String,
+            required: true,
+            unique: true,
+            lowecase: true,
+            trim: true, 
+        },
+        fullName: {
+            type: String,
+            required: true,
+            trim: true, 
+            index: true
+        },
+        avatar: {
+            type: String, // cloudinary url
+            required: true,
+        },
+        coverImage: {
+            type: String, // cloudinary url
+        },
+        watchHistory: [
+            {
+                type: Schema.Types.ObjectId,
+                ref: "Video"
+            }
+        ],
+        password: {
+            type: String,
+            required: [true, 'Password is required']
+        },
+        refreshToken: {
+            type: String,
+        }
 
     },
-    fullname:
     {
-        type: String,
-        required: true,
-        index:true,
-        trim:true,
-    },
-    avatar:
-    {
-        type:String, //cloudinary url
-        required:true,
-    },
-     coverImage:
-    {
-        type:String, //cloudinary url
-    },
-    watchHistory:[
-    {
-        type:mongoose.Schema.Types.ObjectId,
-        ref:"Video"
+        timestamps: true
     }
-],
-     password:
-     {
-        type:String,
-        required:[true,"password is required"],
+)
 
-     },
-     refreshToken:
-     {
-        type:true,
+userSchema.pre("save", async function (next) {
+    if(!this.isModified("password")) return next();
 
-     }
-
-
-
-},{timestamps:true});
-
-// adding middleware before saving the password in database by hashing
-userSchema.pre("save", async function(next){
-    if (!this.isModified("password")) return next();
-
-    this.password= await bcrypt.hash(this.password,8);
-    next();
-
-
+    this.password = await bcrypt.hash(this.password, 10)
+    next()
 })
 
-//checking the password validation using custom methods
-userSchema.methods.isPasswordCorrect=async function(password)
-{
-    return await bcrypt.compare(password,this.password)
-    //return boolean value 
+userSchema.methods.isPasswordCorrect = async function(password){
+    return await bcrypt.compare(password, this.password)
 }
 
-userSchema.methods.generateAccessToken= function(){
+userSchema.methods.generateAccessToken = function(){
     return jwt.sign(
         {
-            _id:this._d,
-            email:this.email,
-            username:this.username,
-            fullname:this.fullname,
+            _id: this._id,
+            email: this.email,
+            username: this.username,
+            fullName: this.fullName
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
-            expiresIn:process.env.ACCESS_TOKEN_EXPIRY
-
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY
         }
     )
-    
 }
-
-userSchema.methods.generateRefreshToken= function(){
+userSchema.methods.generateRefreshToken = function(){
     return jwt.sign(
         {
-            _id:this._d,
+            _id: this._id,
             
         },
         process.env.REFRESH_TOKEN_SECRET,
         {
-            expiresIn:process.env.REFRESH_TOKEN_SECRET
-
-        })
+            expiresIn: process.env.REFRESH_TOKEN_EXPIRY
+        }
+    )
 }
 
-
-export const user= Schema.model("user",userSchema);
+export const user = mongoose.model("user", userSchema)

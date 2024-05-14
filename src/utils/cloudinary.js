@@ -2,8 +2,7 @@
 //from that file path we provide that directory to the function then 
 //that function uploads the file to cloudinary
 import {v2 as cloudinary} from "cloudinary";
-import fs from "fs";
-
+import fs from "fs/promises";
 
 //Configuration gives the permission to upload the file how,where etc
 cloudinary.config({ 
