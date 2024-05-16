@@ -1,78 +1,61 @@
-import {asyncHandler} from '../utils/asyncHandler.js';
-import { user } from '../models/user.models.js';
-import { uploadOnCloudinary } from '../utils/cloudinary.js';
-export const registerUser=asyncHandler( async(req,res)=>{
-      // get user details from frontend
-    // validation - not empty
-    // check if user already exists: username, email
-    // check for images, check for avatar
-    // upload them to cloudinary, avatar
-    // create user object - create entry in db
-    // remove password and refresh token field from response
-    // check for user creation
-    // return res
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { user } from "../models/user.models.js";
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 
+export const registerUser = asyncHandler(async (req, res) => {
+  //get user details from frontend
+  //validation -not empty
+  //check if user already exists:using username and email
+  //check for images,check for avatar
+  //upload them to cloudinary,avatar
+  //create user object-create entry in db
+  //remove password and refresh token field from response
+  //check for user creation
+  //return res
+  const { username, email, password, fullname } = req.body;
 
-    const {fullName, email, username, password } = req.body
-    //console.log("email: ", email);
+  if (
+    [fullname, email, username, password].some((Item) => Item?.trim() === "")
+  ) {
+    return res.status(400).json({ error: "Enter the all required fields" });
+  }
 
-    if (
-        [fullName, email, username, password].some((field) => field?.trim() === "")
-    ) {
-        res.status(200).json({error:"All fields are required"})
-    }
+  const avatarLocalPath = req.files?.avatar[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage[0]?.path;
 
-    const existedUser = await user.findOne({
-        $or: [{ username }, { email }]
-    })
+  if (!avatarLocalPath) {
+    return res.status(404).json({ error: "avatar file has to be upload" });
+  }
 
-    if (existedUser) {
-        res.statuse(409).json({error:"User with email or username already exists"})
-    }
-    //console.log(req.files);
+  const avatar = await uploadOnCloudinary(avatarLocalPath); //return the url of clodinary where it is stored
+  const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 
-    const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  //as avatar is required field as we have already declared in the model of database schema it is set
+  //in the database that it has to be mandatory to upload the file path
+  // of avatar but it is not require to upload the local file path of
+  // coverImage as it is not required to upload in data modeling.
+  if (!avatar) {
+    return res.status(404).json({ error: "Avatar file is required" });
+  }
 
-    // let coverImageLocalPath;
-    // if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
-    //     coverImageLocalPath = req.files.coverImage[0].path
-    // }
-    
+  const User = await user.create({
+    fullname,
+    avatar: avatar.url,
+    coverImage: coverImage?.url || "",
+    email,
+    password,
+    username: username.toLowerCase(),
+  });
 
-    if (!avatarLocalPath) {
-        res.status(400).json({error:"Avatar file is required man"})
-    }
+  const createdUser = await user
+    .findById(user._id)
+    .select("-password -refreshToken");
 
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+  if (!createdUser) {
+    return res
+      .status(500)
+      .json({ error: "Something went wrong while registering the user" });
+  }
 
-    if (!avatar) {
-        res.status(400).json({error:"Avatar file is required"})
-    }
-   
-
-    const User = await user.create({
-        fullName,
-        avatar: avatar.url,
-        coverImage: coverImage?.url || "",
-        email, 
-        password,
-        username: username.toLowerCase()
-    })
-
-    const createdUser = await user.findById(User._id).select(
-        "-password -refreshToken"
-    )
-
-    if (!createdUser) {
-        res.status(400).json("Something went wrong while registering the user")
-    }
-
-    return res.status(201).json(
-        res.status(300).json({done:"yea"})
-    )
-
-} )
-
-
+  return res.status(201).json(createdUser);
+});
