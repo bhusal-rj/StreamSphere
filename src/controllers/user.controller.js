@@ -58,4 +58,8 @@ export const registerUser = asyncHandler(async (req, res) => {
   }
 
   return res.status(201).json(createdUser);
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> 5ea640286e303ebc5dd97ea6ccd6653595630842
